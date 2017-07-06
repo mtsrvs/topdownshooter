@@ -15,27 +15,33 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private var spinnyNode : SKShapeNode?
     let cam:SKCameraNode = SKCameraNode()
 
+    let maxLife:Int = 10
+    
     var player:Player
-    var zombie:Zombie
-    var zombie2:Zombie
+    var zombie:[Zombie]
     var gameMap:GameMap
+    
     var astar: Astar
-    
     var wander: WanderBehaviour
+    var pursuit: PursuitBehaviour
     
-    var firelight:Firelight
+    var sword:Sword
+    var hud:HUD!
     
     override init(size: CGSize) {
         gameMap = GameMap(size: size)
-        player = Player()
-        zombie = Zombie()
-        zombie2 = Zombie()
+        player = Player(maxLife: maxLife)
+        zombie = [Zombie]()
+        zombie.append(Zombie())
+        zombie.append(Zombie())
 
-        firelight = Firelight()
+        sword = Sword()
         
         astar = Astar(map: gameMap.matrix)
         wander = WanderBehaviour()
+        pursuit = PursuitBehaviour()
         super.init(size: size)
+        
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -65,41 +71,40 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         //PLAYER
         self.addChild(player)
-        player.position = gameMap.getMap()[3][3].point
+        player.setCell(c: gameMap.getMap()[3][3])
         player.gameScene = self
-        player.zPosition = 1000
+        player.zPosition = 2000
 
         //ENEMIES
-        self.addChild(zombie)
-        zombie.position = gameMap.getMap()[9][13].point
-        zombie.gameScene = self
-        zombie.zPosition = 1000
+        self.addChild(zombie[0])
+        zombie[0].setCell(c: gameMap.getMap()[9][13])
+        zombie[0].gameScene = self
+        zombie[0].zPosition = 1000
 
-        self.addChild(zombie2)
-        zombie2.position = gameMap.getMap()[6][10].point
-        zombie2.gameScene = self
-        zombie2.zPosition = 1000
+        self.addChild(zombie[1])
+        zombie[1].setCell(c: gameMap.getMap()[9][13])
+        zombie[1].gameScene = self
+        zombie[1].zPosition = 1000
         
-        
-        //FIRELIGHT
-//        self.addChild(firelight)
-//        firelight.position = gameMap.getMap()[0][0].point
-//        firelight.gameScene = self
-//        firelight.zPosition = 1000
-        
+        //SWORD
+        self.addChild(sword)
+        sword.zPosition = 1000
+        sword.position = gameMap.getMap()[5][5].point
+        gameMap.getMap()[5][5].setItem(item: sword)
         
         //CAMERA
         self.camera = cam
         cam.yScale = 0.7
         cam.xScale = 0.7
         
+        hud = HUD(cam: cam, maxLife: maxLife, sksc: self)
+
         createSceneContents()
     }
     
-    
     func createSceneContents() {
         self.size = CGSize(width: self.size.width, height: self.size.height)
-        self.backgroundColor = .white
+        self.backgroundColor = .black
         self.scaleMode = .aspectFit
         self.physicsBody = SKPhysicsBody(edgeLoopFrom: self.frame)
     }
@@ -111,9 +116,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             self.addChild(n)
         }
         
-        print(pos)
-        
-        var auxCell:Cell = gameMap.pointToCell(point: pos)
+        let auxCell:Cell = gameMap.pointToCell(point: pos)
         if(auxCell.point != CGPoint.zero) {
                move(destiny: pos)
         }
@@ -158,31 +161,48 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     
     override func update(_ currentTime: TimeInterval) {
-        //a estrella
-        player.move() //para el player posta
+        var path:[Cell]
         
-        //wander
-        if zombie.canWander {
-            zombie.moveWander(playerCell: gameMap.pointToCell(point: zombie.position), wanderResult: wander.doWander(velocity: (zombie.physicsBody?.velocity)!))
+        //ataca player
+        player.attack(map: gameMap.getMap(), enemies: zombie)
+        
+        //se mueve player
+        player.move()
+        
+        //atacan enemies
+        for i in 0 ..< zombie.count {
+            zombie[i].attack(player: player)
         }
-        zombie.isOtherPosition(otherCell: gameMap.pointToCell(point: zombie.position))
         
-        //pursuit
-        var steering:CGVector = PursuitBehaviour.pursuit(entity: gameMap.pointToCell(point: zombie2.position), target: gameMap.pointToCell(point: player.position), targetPlayer: player)
-        
-        steering = steering.truncate(value: 10)
-        steering = steering / 1 // / mass
-        zombie2.physicsBody?.velocity = (zombie2.physicsBody?.velocity)! + steering
-        zombie2.physicsBody?.velocity = (zombie2.physicsBody?.velocity.truncate(value: 10))!
-        
+        //se mueven enemies
+        for i in 0 ..< zombie.count {
+            zombie[i].checkMode(player: player.myCell)
+            
+            if zombie[i].mode == EnemyConstants.WANDER_MODE {
+                print("zombie\(i) esta en WANDER")
+                path = WanderBehaviour.doWander(map: gameMap.getMap(), enemy: zombie[i].myCell, astar: astar)
+                zombie[i].walkPath(pathToWalk: path)
+                
+            } else if zombie[i].mode == EnemyConstants.PURSIUT_MODE {
+                print("zombie\(i) esta en PURSUIT")
+                path = PursuitBehaviour.pursuit(start: gameMap.pointToCell(point: zombie[i].position), goal: gameMap.pointToCell(point: player.position), astar: astar)
+                zombie[i].walkPath(pathToWalk: path)
+            }
+            
+            zombie[i].move()
+        }
+
+        //CAMERA
         cam.position = player.position
+
+        //HUD: head-up display
+        hud.update(positionCam: cam.position, playerLife: player.life)
     }
     
     func move(destiny: CGPoint) {
-        let path:[Cell] = astar.getPath(start: gameMap.pointToCell(point: player.position), goal: gameMap.pointToCell(point: destiny))
-        for c in path {
-            print(c.position)
-        }
+        let path:[Cell] = astar.getPath(start: player.nextCell, goal: gameMap.pointToCell(point: destiny))
+//      imprime el camino a estrella del player
+//      for c in path { print(c.position)  }
         player.walkPath(pathToWalk: path)
     }
 }

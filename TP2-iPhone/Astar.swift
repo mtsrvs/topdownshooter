@@ -52,7 +52,7 @@ class Astar {
             
             openedSet.removeFirst()
             closedSet.insert(current)
-            for each in neighborhood(map: map, centerCell: current) {
+            for each in MathCell.neighborhood(map: map, centerCell: current) {
                 if closedSet.contains(each) {
                     continue
                 }
@@ -94,7 +94,7 @@ class Astar {
     }
     
     func dist_between(current: Cell, next: Cell) -> Double {
-        for edge in neighborhood(map: map, centerCell: current) {
+        for edge in MathCell.neighborhood(map: map, centerCell: current) {
             if edge == next {
                 return 1.0 //edge.getCost();
             }
@@ -106,41 +106,7 @@ class Astar {
         return sqrt(Double(pow(to.col() - from.col(), 2) + pow(to.row() - from.row(), 2)))
     }
     
-    func neighborhood(map: [[Cell]], centerCell: Cell) -> [Cell] {
-        var neighbor:[Cell] = [Cell]()
-        let x:Int = Int(centerCell.position.x)
-        let y:Int = Int(centerCell.position.y)
-        
-        //LEFT
-        if (x - 1 >= 0 && x - 1 < map.count) {
-            if map[x - 1][y].isWalkable() {
-                neighbor.append(map[x - 1][y])
-            }
-        }
-        
-        //UP
-        if (y - 1 >= 0 && y - 1 < map[0].count) {
-            if map[x][y - 1].isWalkable() {
-                neighbor.append(map[x][y - 1])
-            }
-        }
-        
-        //RIGHT
-        if (x + 1 >= 0 && x + 1 < map.count) {
-            if map[x + 1][y].isWalkable() {
-                neighbor.append(map[x + 1][y])
-            }
-        }
-        
-        //DOWN
-        if (y + 1 >= 0 && y + 1 < map[0].count) {
-            if map[x][y + 1].isWalkable() {
-                neighbor.append(map[x][y + 1])
-            }
-        }
-        
-        return neighbor
-    }
+
     
     func getCell(aCell: Cell) -> Cell {
         return map[Int(aCell.position.x)][Int(aCell.position.y)]

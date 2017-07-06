@@ -25,6 +25,7 @@ class Cell: Hashable {
     var walkable:Bool
     var point:CGPoint
     var position:CGPoint
+    var item:SKSpriteNode!
     
     init() {
         self.walkable = true
@@ -48,6 +49,18 @@ class Cell: Hashable {
         self.walkable = true
         self.position = CGPoint.zero
         self.point = CGPoint(x:col, y:row)
+    }
+    
+    func setItem(item: SKSpriteNode) {
+        self.item = item
+    }
+
+    func getItem() -> SKSpriteNode {
+        return self.item
+    }
+    
+    func hasItem() -> Bool {
+        return self.item != nil
     }
     
     func setWalkable(status: Bool) {
