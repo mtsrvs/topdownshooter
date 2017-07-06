@@ -1,4 +1,5 @@
-# topdownshooter
+# TP2 - topdownshooter
+## (20171Q) 72.65 - Desarrollo de Videojuegos 2D en iPhone OS
 topdownshooter game
 
 
